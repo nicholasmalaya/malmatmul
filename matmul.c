@@ -2,6 +2,8 @@
 //       Feel free to implement your own code to tune memory layout, etc. 
 #include "Mat.h" 
 
+//#include "rocblas.h"
+
 // Note: code was copied from http://csapp.cs.cmu.edu/2e/waside/waside-blocking.pdf
 //       this would disqualify this entry in the contest. This is an example entry only.
 void bijk(MatS *A, MatS *B, MatS *C, long n, int bsize)

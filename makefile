@@ -1,6 +1,6 @@
 IDIR = ../MatRoutines
-CC=gcc
-#CC=hcc
+#CC=gcc
+CC=hcc
 CFLAGS= -O3 -g -I$(IDIR)
 LIBS= -lm
 
