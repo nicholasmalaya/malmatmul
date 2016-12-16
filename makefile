@@ -1,6 +1,6 @@
 IDIR = ../MatRoutines
-CC=gcc
-#CC=hcc
+#CC=gcc
+CC=hcc
 CFLAGS= -O3 -g -I$(IDIR)
 LIBS= -lm
 
@@ -17,6 +17,9 @@ OBJ = $(patsubst %,./%,$(_OBJ))
 
 %.o: %.cpp $(DEPS)
 	$(CC)  `hcc-config --cxxflags --ldflags`-c -o $@ $< $(CFLAGS)
+
+%.o: %.c $(DEPS)
+	$(CC)  -c -o $@ $< $(CFLAGS)
 
 malmatmul: $(OBJ)
 	hcc -o $@ $^ $(CFLAGS)
