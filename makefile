@@ -1,6 +1,6 @@
 IDIR = ../MatRoutines
-#CC=gcc
-CC=hcc
+CC=gcc
+#CC=hcc
 CFLAGS= -O3 -g -I$(IDIR)
 LIBS= -lm
 
@@ -9,11 +9,14 @@ VPATH = ../MatRoutines
 _DEPS = Mat.h
 DEPS = $(patsubst %,$(IDIR)/%,$(_DEPS))
  
-_OBJ = Mat.o fom_timer.o  matmul.o malmatmul.o
+_OBJ = Mat.o fom_timer.o matmul.o malmatmul.o
 OBJ = $(patsubst %,./%,$(_OBJ)) 
 
-%.o: %.c $(DEPS)
-	$(CC) -c -o $@ $< $(CFLAGS)
+#%.o: %.c $(DEPS)
+#	$(CC) -c -o $@ $< $(CFLAGS)
+
+%.o: %.cpp $(DEPS)
+	$(CC)  `hcc-config --cxxflags --ldflags`-c -o $@ $< $(CFLAGS)
 
 malmatmul: $(OBJ)
 	hcc -o $@ $^ $(CFLAGS)
