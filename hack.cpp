@@ -34,8 +34,65 @@ typedef struct
 	double **mat;
 } MatS;
 
-//
+// _transpose_cpu
 void bijk(MatS *A, MatS *B, MatS *C, long n, int bsize)
+{
+	long i,j,k;
+	double sum;
+
+	// zeroing solution matrix
+	for(i=0; i<n; i++)
+		for(j=0; j<n; j++)
+			C->mat[i][j] = 0.0;
+
+	
+	
+	// nested loop
+	for(i=0; i< n; i++)
+	  {
+	    for(j = 0; j < n; j++)
+	      {
+		sum = C->mat[i][j];
+		for(k = 0; k < n; k++)
+		  {
+		    sum += A->mat[i][k] * B->mat[k][j];
+		  }
+		C->mat[i][j] = sum;
+	      }
+	  }
+}
+// kernel
+//
+
+void bijk_stupidest_cpu(MatS *A, MatS *B, MatS *C, long n, int bsize)
+{
+	long i,j,k;
+	double sum;
+
+	// zeroing matrix
+	for(i=0; i<n; i++)
+		for(j=0; j<n; j++)
+			C->mat[i][j] = 0.0;
+
+	// nested loop
+	for(i=0; i< n; i++)
+	  {
+	    for(j = 0; j < n; j++)
+	      {
+		sum = C->mat[i][j];
+		for(k = 0; k < n; k++)
+		  {
+		    sum += A->mat[i][k] * B->mat[k][j];
+		  }
+		C->mat[i][j] = sum;
+	      }
+	  }
+}
+// kernel
+//
+
+//
+void bijk_stupid_cpu(MatS *A, MatS *B, MatS *C, long n, int bsize)
 {
 	long i,j,k,kk,jj;
 	double sum;

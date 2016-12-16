@@ -1,1 +1,1 @@
-hcc `hcc-config --cxxflags --ldflags` hack.cpp  -o malmatmul 
+hcc -g `hcc-config --cxxflags --ldflags` hack.cpp  -o malmatmul 
