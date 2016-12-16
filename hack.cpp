@@ -22,7 +22,7 @@
 #include <string.h>
 #include <sys/time.h>
 
-#include <hcc/hc.hpp>
+//#include <hcc/hc.hpp>
 
 #define ERROR (1)
 #define OK (0)
@@ -34,18 +34,94 @@ typedef struct
 	double **mat;
 } MatS;
 
-// _transpose_cpu
+// allocate memory for and zero MatS data
+MatS * CreateMat(long N)
+{
+	long i,j;
+
+	MatS *m = (MatS *)malloc(sizeof(MatS));
+	if(m == NULL) 
+	{
+		printf("Memory allocation error\n");
+		exit(1);
+	}
+
+	m->N = N;
+
+	m->mat = (double**)malloc(sizeof(double*) * N);
+	m->mat[0] = (double*)malloc(sizeof(double) * N * N);
+	for(i=1; i< N; i++)
+	{
+	  m->mat[i] = m->mat[0] + i * N;
+	}
+
+	for(i=0; i< N; i++)
+		for(j=0; j<N; j++)
+			m->mat[i][j] = 0.0;
+
+	return(m);
+}
+
 void bijk(MatS *A, MatS *B, MatS *C, long n, int bsize)
+{
+	long i,j,k,kk,jj;
+	double sum;
+
+	// wrap the data buffer around with an array_view
+	// to let the hcc runtime manage the data transfer
+	hc::array_view<float, 1> av_x(N, x);
+	hc::array_view<float, 1> av_y(N, y_gpu);
+
+	//
+	// launch a GPU kernel to compute the saxpy in parallel
+	//
+	hc::parallel_for_each(hc::extent<1>(N)
+			      , [=](hc::index<1> i) [[hc]]
+			      {
+				C[i][j] = N * av_x[i] + av_y[i];
+			      });
+	
+	
+	// nested loop
+	for(kk = 0; kk < en; kk += bsize)
+	{
+		for(jj = 0; jj < en; jj += bsize)
+		{
+			for(i=0; i< n; i++)
+			{
+				for(j = jj; j < jj + bsize; j++)
+				{
+					sum = C->mat[i][j];
+					for(k = kk; k < kk + bsize; k++)
+					{
+						sum += A->mat[i][k] * B->mat[k][j];
+					}
+					C->mat[i][j] = sum;
+				}
+			}
+		}
+	}
+}
+// kernel
+//
+
+
+// _transpose_cpu
+void bijk_transpose_cpu(MatS *A, MatS *B, MatS *C, long n, int bsize)
 {
 	long i,j,k;
 	double sum;
-
-	// zeroing solution matrix
-	for(i=0; i<n; i++)
-		for(j=0; j<n; j++)
-			C->mat[i][j] = 0.0;
-
+	double swap;
 	
+	// transpose our friend and go!
+	MatS* Bt = CreateMat(B->N);
+	for(i=0; i<n; i++)
+	  {
+	    for(j=0; j<n; j++)
+	      {
+		Bt->mat[j][i] = B->mat[i][j];		
+	      }
+	  }
 	
 	// nested loop
 	for(i=0; i< n; i++)
@@ -55,7 +131,7 @@ void bijk(MatS *A, MatS *B, MatS *C, long n, int bsize)
 		sum = C->mat[i][j];
 		for(k = 0; k < n; k++)
 		  {
-		    sum += A->mat[i][k] * B->mat[k][j];
+		    sum += A->mat[i][k] * Bt->mat[j][k];
 		  }
 		C->mat[i][j] = sum;
 	      }
@@ -126,34 +202,6 @@ void bijk_stupid_cpu(MatS *A, MatS *B, MatS *C, long n, int bsize)
 // kernel
 //
 
-// allocate memory for and zero MatS data
-MatS * CreateMat(long N)
-{
-	long i,j;
-
-	MatS *m = (MatS *)malloc(sizeof(MatS));
-	if(m == NULL) 
-	{
-		printf("Memory allocation error\n");
-		exit(1);
-	}
-
-	m->N = N;
-
-	m->mat = (double**)malloc(sizeof(double*) * N);
-	m->mat[0] = (double*)malloc(sizeof(double) * N * N);
-	for(i=1; i< N; i++)
-	{
-	  m->mat[i] = m->mat[0] + i * N;
-	}
-
-	for(i=0; i< N; i++)
-		for(j=0; j<N; j++)
-			m->mat[i][j] = 0.0;
-
-	return(m);
-}
-
 void DestroyMat(MatS *m)
 {
 	long i,j;
@@ -198,10 +246,11 @@ MatS * ReadMatrixFromFile(FILE *fp)
 	long N;
 	long i,j;
 	int rval;
-
+	int err;
+	
 	if(fp == NULL) return NULL;
 
-	fscanf(fp, "%ld\n", &N);
+	err = fscanf(fp, "%ld\n", &N);
 
 	printf("File contains %lu x %lu matrix\n", N, N);
 
@@ -227,7 +276,7 @@ MatS * ReadMatrixFromFile(FILE *fp)
 				return(NULL);
 			}
 		}
-		fscanf(fp, "\n");
+		err += fscanf(fp, "\n");
 	}
 
 	return(m);
@@ -271,12 +320,12 @@ double get_wtime()
 }
 
 // Convert fractional time to nanosecond counter ticks
-uint64_t Get_Time_ns_ticks()
-{
-	return( (uint64_t)(1.0E9 * get_wtime()));
-}
+// uint64_t Get_Time_ns_ticks()
+// {
+// 	return( (uint64_t)(1.0E9 * get_wtime()));
+// }
 
-// Creates memory for C and computes C = AB
+// Create memory for C and computes C = AB
 MatS * matmul(MatS *A, MatS *B)
 {
 	MatS *C = NULL;
