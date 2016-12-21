@@ -114,46 +114,9 @@ void bijk(hc::array_view<double,2> a, hc::array_view<double,2> b, hc::array_view
 }
 // kernel
 //
-
 //
-// STUPID (CPU) CORE COMPUTE KERNEL
-//
-void bijk_cpu(hc::array_view<double,2> a, hc::array_view<double,2> b, hc::array_view<double,2> c, long n)
-{
-  long i,j,k,kk,jj;
-  double sum;
-  int bsize = 8;
-  //int en = bsize * (n/bsize); // amount that fits evenly into block size
-  int en = 3000;
-  //std::cout << b[0][0] << std::endl;
-  
-  // nested loop
-  for(kk = bsize; kk < en; kk += bsize)
-    {
-      //std::cout << kk << std::endl;
-      for(jj = 0; jj < en; jj += bsize)
-	{
-	  //std::cout << jj << std::endl;
-	  for(i=0; i< n; i++)
-	    {
-	      //std::cout << 'row ' << int(i) << std::endl;
-	      for(j = jj; j < jj + bsize; j++)
-		{
-		  sum = c[i][j];
-		  for(k = kk; k < kk + bsize; k++)
-		    {
-		      sum += a[i][k] * b[k][j];
-		    }
-		  c[i][j] = sum;
-		}
-	    }
-	}
-    }
-  
-}
-// kernel
-//
-
+// https://msdn.microsoft.com/en-us/library/hh873133.aspx
+// https://github.com/arbenson/fast-matmul/blob/master/codegen/algorithms/strassen
 
 //
 //	MSEMat - compute the mean squared error between 
