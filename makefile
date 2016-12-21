@@ -1,37 +1,43 @@
-IDIR = ../MatRoutines
-#CC=gcc
+## Select build enviroment  ##
+
+#CC=icpc #intel
+CC=g++  #GNU
 CC=hcc
-CFLAGS= -O3 -g -I$(IDIR)
-LIBS= -lm
 
-VPATH = ../MatRoutines
+CFLAGS  = #-03 #-g
+CXXFLAGS=-Wall 
+LDFLAGS = 
+SOURCES = malmatmul.cpp 
 
-_DEPS = Mat.h
-DEPS = $(patsubst %,$(IDIR)/%,$(_DEPS))
- 
-_OBJ = Mat.o fom_timer.o matmul.o malmatmul.o
-OBJ = $(patsubst %,./%,$(_OBJ)) 
+## executable name ##
+EXEC=malmatmul
 
-#%.o: %.c $(DEPS)
-#	$(CC) -c -o $@ $< $(CFLAGS)
+###############################################
+######### DO not edit anything below ##########
+###############################################                              
 
-%.o: %.cpp $(DEPS)
-	$(CC)  `hcc-config --cxxflags --ldflags`-c -o $@ $< $(CFLAGS)
+## append include and library paths -- choose what is being used here ##
+INCLUDE=
+LIBS=
 
-%.o: %.c $(DEPS)
-	$(CC)  -c -o $@ $< $(CFLAGS)
+## building object list ##
+OBJECTS = $(addsuffix .o,$(basename $(SOURCES)))
 
-malmatmul: $(OBJ)
-	hcc -o $@ $^ $(CFLAGS)
+## build the executable ##
+$(EXEC): $(OBJECTS)
+	$(CC) `hcc-config --cxxflags --ldflags` $(LDFLAGS) $(OBJECTS) -o $(INCLUDE) $@ $(LIBS) 
 
-.PHONY: clean $(IDIR)
+# build cpp object files
+%.o: %.cpp
+	@echo building $< 
+	$(CC) `hcc-config --cxxflags --ldflags` -c $(CXXFLAGS) $(INCLUDE) $< -o $@
 
-subdirs:
-	for dir in $(IDIR); do \
-		$(MAKE) -C $$dir; \
-	done
+# build cpp object files
+%.o: %.c
+	@echo building $< 
+	$(CC)  -c $(CFLAGS) $(INCLUDE) $< -o $@
 
-
+# clean directive 'make clean'
 clean:
-	rm malmatmul *.o *~
-
+	- /bin/rm $(EXEC) *.o *.mod *~ \#* 
+	@echo 'files cleaned'
