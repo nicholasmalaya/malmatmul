@@ -1,184 +1,301 @@
 /*
-    matmul
-
-    Sample contest submission to demonstrate expectations for file I/O, FOM and contest judging
-
-    Note: this code is not optimized and will not be used as an actual submission. 
-          This code has been minimally tested and should be correct. Bugs and errors may exist. 
+    malmatmul
+    MALaya MATrix MULtiply
 
     Use:
 
-    matmul <A matrix filename to read> <B matrix filename to read> <C matrix filename to write>
-
-	 *** Please include your name in the comments ***
-    Submitter's Name: Sample Submission
+    malmatmul <A matrix filename to read> <B matrix filename to read> <C matrix filename to write>
+    Submitter's Name: Nick
 
 */
 
+#include <sys/time.h>
 #include <stdio.h>
+#include <iostream>
+#include <fstream>  
+#include <string>
+#include <vector>
 #include <stdlib.h>
-#include <unistd.h>
-#include <math.h>
-#include <string.h>
 
-// Note: you do not need to use the matrix routines included in the Mat.h header.
-//       Feel free to implement your own code to tune memory layout, etc. 
-#include "Mat.h" 
+using std::vector;
+using std::string;
 
-// Note: you don't need to use the timing routines, but they are here for convenience. 
-//       Timing should be computed in seconds wall clock time for the FOM
-#include "fom_timer.h"  
+#include <hcc/hc.hpp>
 
-// solver
-#include "matmul.h"
-
-//	MSEMat - compute the mean squared error between 
-//	two matrices.
-double MSECalc(MatS *C, MatS *G)
+vector<vector<double> > ReadMatrixFromFile(FILE *fp)
 {
-	double mse = 0.0, err;
-	long i,j;
-	long N;
+  int err, rval;
+  long n, i, j;
 
-	if(C->N != G->N)
+  // grab first line, sizeof matrix (n)
+  err = fscanf(fp, "%ld\n", &n);
+  printf("File contains %lu x %lu matrix\n", n, n);
+
+  // build 2d matrix
+  vector<vector<double> > m;
+  m.resize(n);
+  for (i = 0; i < n; ++i)
+    m[i].resize(n);
+
+  // MARK IT ZERO
+  for(i=0; i< n; i++)
+    for(j=0; j<n; j++)
+      m[i][j] = 0.0;
+
+  // read in new values
+  for(i=0; i<n; i++)
+    {
+      for(j=0; j<n; j++)
 	{
-		printf("Matrices must be the same size: Mat C size = %lu, Gold size = %lu", C->N, G->N);
-		exit(ERROR);
+	  rval = fscanf(fp, "%lf,", &m[i][j]);
 	}
+      err += fscanf(fp, "\n");
+    }
 
-	N = C->N;
+  return(m);
 
-	for(i = 0; i < N; i++)
+}
+ 
+vector<vector<double> > build_C(long N)
+{
+  long i,j;
+  
+  vector<vector<double> > m;
+  m.resize(N);
+  for (i = 0; i < N; ++i)
+    m[i].resize(N);
+  
+  // // MARK IT ZERO
+  for(int i=0; i< N; i++)
+    for(j=0; j<N; j++)
+      m[i][j] = 0.0;
+  
+  return(m);
+}
+
+int WriteMatrixToFile(FILE *fp, hc::array_view<double,2> mat, long N)
+{
+  long i,j;
+  if(fp == NULL) return(1);
+  
+  fprintf(fp, "%ld\n", N);
+  for(i=0; i< N; i++)
+    {
+      for(j=0; j< N; j++)
 	{
-		for(j=0; j < N; j++)
+	  fprintf(fp, "%lf, ", mat[i][j]);
+	}
+      fprintf(fp, "\n");
+    }
+  
+  return(0);
+}
+
+
+//
+// CORE COMPUTE KERNEL
+//
+void bijk(hc::array_view<double,2> a, hc::array_view<double,2> b, hc::array_view<double,2> c, long n)
+{  
+
+  c.discard_data();
+  hc::parallel_for_each(c.get_extent(), [=](hc::index<2> idx) [[hc]]
 		{
-			err = C->mat[i][j] - G->mat[i][j];
-			mse += err * err;
-		}
-	}
+		  int row = idx[0];
+		  int col = idx[1];
+ 		  double sum = 0;
+		  
+		  for(int i = 0; i < b.get_extent()[0]; i++)
+		    sum += a(row, i) * b(i, col);
+		  c[idx] = sum;
+   		});
+  c.synchronize();
 
-	return(mse);
 }
+// kernel
+//
 
-// Creates memory for C and computes C = AB
-MatS * matmul(MatS *A, MatS *B)
+//
+// STUPID (CPU) CORE COMPUTE KERNEL
+//
+void bijk_cpu(hc::array_view<double,2> a, hc::array_view<double,2> b, hc::array_view<double,2> c, long n)
 {
-	MatS *C = NULL;
-	long N;
-	double start, end;
-
-	if(A->N != B->N)
+  long i,j,k,kk,jj;
+  double sum;
+  int bsize = 8;
+  //int en = bsize * (n/bsize); // amount that fits evenly into block size
+  int en = 3000;
+  //std::cout << b[0][0] << std::endl;
+  
+  // nested loop
+  for(kk = bsize; kk < en; kk += bsize)
+    {
+      //std::cout << kk << std::endl;
+      for(jj = 0; jj < en; jj += bsize)
 	{
-		printf("A and B matricies need to be the same size\n");
-		return(NULL);
+	  //std::cout << jj << std::endl;
+	  for(i=0; i< n; i++)
+	    {
+	      //std::cout << 'row ' << int(i) << std::endl;
+	      for(j = jj; j < jj + bsize; j++)
+		{
+		  sum = c[i][j];
+		  for(k = kk; k < kk + bsize; k++)
+		    {
+		      sum += a[i][k] * b[k][j];
+		    }
+		  c[i][j] = sum;
+		}
+	    }
 	}
-
-	N = A->N;
-
-	C = CreateMat(N);
-	if(C == NULL)
-	{
-		printf("Could not create C matrix of size %lu x %lu\n", N, N);
-		return(C);
-	}
-
-	// hard-code block-size. Note: block size must be divisible into matrix size for correctness
-	// Don't make assumptions like this in a real submission. The contest judging problem matrix
-	// sizes may be even or odd and may or may not be divisible. The judges will not modify code
-	// to account for this. Judges will not re-compile code specifically for a problem size. 
-	// handle these edge conditions in your code at runtime. 
-
-	// FOM calculation should be similar to what is done here
-	start = get_wtime();
-	bijk(A,B,C, N, 8);
-	end = get_wtime();
-
-	printf("FOM (sec) = %.4lf\n", end - start);  
-	return(C);
+    }
+  
 }
+// kernel
+//
+
+
+//
+//	MSEMat - compute the mean squared error between 
+//	two "matrices".
+//
+double MSECalc(hc::array_view<double, 2> C, hc::array_view<double, 2> G, long N)
+{
+  double mse = 0.0, err;
+  long i,j;
+  
+  for(i = 0; i < N; i++)
+    {
+      for(j=0; j < N; j++)
+	{
+	  err = C[i][j] - G[i][j];
+	  mse += err * err;
+	}
+    }
+  
+  return(mse);
+}
+
+
+//
+// get time information
+//
+double get_wtime()
+{
+	double t;
+	struct timeval tm;
+	gettimeofday(&tm, NULL);
+	t = tm.tv_sec + (tm.tv_usec/1.0E6);
+	return(t);
+}
+
 
 int main(int argc, char *argv[])
 {
-	MatS *A = NULL;
-	MatS *B = NULL;
-	MatS *C = NULL;
-	MatS *G = NULL;
-	FILE *fp_A;
-	FILE *fp_B;
-	FILE *fp_C;
-	FILE *fp_G;
-	char *filename_A = argv[1];
-	char *filename_B = argv[2];
-	char *filename_C = argv[3];
-	char *filename_G = argv[4];
+  // simple error handling
+  if(argc < 4)
+    {
+      printf("Filenames must be specified on the command line\n");
+      printf("Filenames A and B will be given and read in\n");
+      printf("Filename C will be written by this code\n");
+      printf("Filename G (if present) will be 'true' solution\n");
+      printf("%s <A mat> <B mat> <C mat> <G mat>\n", argv[0]);
+      exit(1);
+    }
+  
+  FILE *fp_A;
+  FILE *fp_B;
+  FILE *fp_C;
+  FILE *fp_G;
+  char *filename_A = argv[1];
+  char *filename_B = argv[2];
+  char *filename_C = argv[3];
+  
+  fp_A = fopen(filename_A, "r");
+  fp_B = fopen(filename_B, "r");
+  fp_C = fopen(filename_C, "w");
 
-	if(argc < 5)
-	{
-		printf("Filenames must be specified on the command line\n");
-		printf("Filenames A and B will be given and read in\n");
-		printf("Filename C will be written by this code according to the matrix format specified\n");
-		printf("%s <A mat> <B mat> <C mat> <G mat>\n", argv[0]);
-		exit(1);
-	}
+  // modest error handling for file IO
+  if(fp_A == NULL || fp_B == NULL)
+    {
+      std::cout << filename_A;
+      printf("\nUnable to open input matrices for reading\n");
+      exit(1);
+    }
 
-	fp_A = fopen(filename_A, "r");
-	fp_B = fopen(filename_B, "r");
-	fp_C = fopen(filename_C, "w");
-	fp_G = fopen(filename_G, "r");
+  if(fp_C == NULL)
+    {
+      printf("Unable to open output file for matrix C\n");
+      exit(1);
+    }
 
-	if(fp_A == NULL || fp_B == NULL || fp_G == NULL)
-	{
-		printf("Unable to open input matrices for reading\n");
-		exit(1);
-	}
+  vector<vector<double> > A = ReadMatrixFromFile(fp_A);
+  vector<vector<double> > B = ReadMatrixFromFile(fp_B);
+  long N = A.size(); // assumes square!
+  
+  // hack it! 
+  vector<double> my_composed_vector;
+  for(int i = 0, ie = A.size(); i != ie; ++i)
+    my_composed_vector.insert(my_composed_vector.end(), A[i].begin(), A[i].end());
+  hc::array_view<double, 2> a(N, N, &my_composed_vector.front());
 
-	if(fp_C == NULL)
-	{
-		printf("Unable to open output file for matrix C\n");
-		exit(1);
-	}
+  vector<double> my_composed_vector_b;
+  for(int i = 0, ie = B.size(); i != ie; ++i)
+    my_composed_vector_b.insert(my_composed_vector_b.end(), B[i].begin(), B[i].end());
+  hc::array_view<double, 2> b(N, N, &my_composed_vector_b.front());
+  
+  // build C matrix  
+  vector<vector<double> > C = build_C(N);
+  vector<double> my_composed_vector_c;
+  for(int i = 0, ie = C.size(); i != ie; ++i)
+    my_composed_vector_c.insert(my_composed_vector_c.end(), C[i].begin(), C[i].end());
+  hc::array_view<double, 2> c(N, N, &my_composed_vector_c.front());
+  
+  //
+  // EXECUTE
+  //
+  std::cout << "execute\n";
+  double start = get_wtime();
+  bijk(a, b, c, N);
+  //bijk_cpu(a, b, c, N);
+  double end = get_wtime();
+  std::cout << "FOM (sec) = " <<  end - start << std::endl;    
+  //
+  //
+  //
+  
+  if(argc == 5) // if gold matrix present
+    {
+      std::cout << "Gold Matrix Present" << std::endl;
+      std::cout << "Error Checking Enabled\n";
+      
+      char *filename_G = argv[4];
+      fp_G = fopen(filename_G, "r");	
+      vector<vector<double> > G = ReadMatrixFromFile(fp_G);
+      
+      // actually do i even need this?
+      vector<double> my_composed_vector_g;
+      for(int i = 0, ie = C.size(); i != ie; ++i)
+	my_composed_vector_g.insert(my_composed_vector_g.end(), G[i].begin(), G[i].end());
+      hc::array_view<double, 2> g(N, N, &my_composed_vector_g.front());
+      
+      // verify solution
+      std::cout << "MSE       = " << MSECalc(c,g,N) << std::endl;
+      fclose(fp_G);         
+    }
 
-	if( NULL == (A = ReadMatrixFromFile(fp_A)))
-	{
-		printf("Unable to read matrix A data\n");
-		exit(1);
-	}
+  // acthung! need to write C matrix!
+  WriteMatrixToFile(fp_C, c, N);  
 
-	if( NULL == (B = ReadMatrixFromFile(fp_B)))
-	{
-		printf("Unable to read matrix B data\n");
-		exit(1);
-	}
-
-	if( NULL == (G = ReadMatrixFromFile(fp_G)))
-	{
-		printf("Unable to read matrix G data\n");
-		exit(1);
-	}
-
-
-	printf("Gentlemen, start your engines!\n");  
-	C = matmul(A,B);
-
-	// verify solution
-	printf("MSE       = %.4lf\n", MSECalc(C,G));  
-	       
-	if(C != NULL) 
-		WriteMatrixToFile(fp_C, C);
-	else
-		printf("Unable to write matrix C to file\n");
-
-	fclose(fp_A);
-	fclose(fp_B);
-	fclose(fp_C);
-	fclose(fp_G);       
-
-	DestroyMat(A);
-	DestroyMat(B);
-	DestroyMat(C);
-	DestroyMat(G);
-
-	// steady as she goes
-	return(0);
+  // clean up
+  fclose(fp_A);
+  fclose(fp_B);
+  fclose(fp_C);
+  
+  // steady as she goes
+  std::cout << "Exiting Normally..." << std::endl;
+  exit(0);
 }
 
+// nick
+// AMD Research
