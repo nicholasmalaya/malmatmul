@@ -158,11 +158,11 @@ void GPU_TILE(hc::array_view<double,2> a, hc::array_view<double,2> b, hc::array_
 {  
   // Tile Size = 8 appears optimal
   static const int TS = 8;
-  //hc::tiled_extent<2> t_ex;
+
+  // build tile(TSxTS)
   hc::extent<2> ex(b.get_extent()[0], b.get_extent()[1]);
   hc::tiled_extent<2> t_ex = ex.tile(TS,TS);
   
-  // build tile(TSxTS)
   c.discard_data();
   hc::parallel_for_each(t_ex, [=](hc::tiled_index<2> t_idx) [[hc]]
 		{
@@ -182,6 +182,7 @@ void GPU_TILE(hc::array_view<double,2> a, hc::array_view<double,2> b, hc::array_
 		      tile_static double locB[TS][TS];
 		      locA[row][col] = a(rowG, col + i);
 		      locB[row][col] = b(row + i, colG);
+		      
 		      // threads in tile all wait until locA,locB are filled.  
 		      t_idx.barrier.wait();
 		      for (int k = 0; k < TS; k++)
@@ -190,6 +191,7 @@ void GPU_TILE(hc::array_view<double,2> a, hc::array_view<double,2> b, hc::array_
 			}
 		      // all threads wait until sums are calculated. 
 		      t_idx.barrier.wait();
+		      
 		    }  
 		  c[t_idx.global] = sum;		  
    		});
