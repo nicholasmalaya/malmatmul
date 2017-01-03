@@ -115,7 +115,7 @@ void GPU_SUB(hc::array_view<double,2> a, hc::array_view<double,2> b, hc::array_v
   c.discard_data();
   hc::parallel_for_each(c.get_extent(), [=](hc::index<2> idx) [[hc]]
 		{		  
-		  c[idx] = a[idx] + b[idx];
+		  c[idx] = a[idx] - b[idx];
    		});
   c.synchronize();
 
@@ -295,3 +295,5 @@ int main(int argc, char *argv[])
 
 // nick
 // AMD Research
+// 12-15-16
+//
