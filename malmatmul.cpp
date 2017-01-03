@@ -152,13 +152,15 @@ void GPU_MULT(hc::array_view<double,2> a, hc::array_view<double,2> b, hc::array_
 // https://github.com/arbenson/fast-matmul/blob/master/codegen/algorithms/strassen
 
 //
-// GPU MULTIPLY W/ TILES KERNEL
+// GPU MULTIPLY W/ TILES 
 //
 void GPU_TILE(hc::array_view<double,2> a, hc::array_view<double,2> b, hc::array_view<double,2> c)
 {  
-  // tile size = TS
-  static const int TS = 2;
-  hc::tiled_extent<2> t_ex;
+  // Tile Size = 8 appears optimal
+  static const int TS = 8;
+  //hc::tiled_extent<2> t_ex;
+  hc::extent<2> ex(b.get_extent()[0], b.get_extent()[1]);
+  hc::tiled_extent<2> t_ex = ex.tile(TS,TS);
   
   // build tile(TSxTS)
   c.discard_data();
@@ -176,15 +178,15 @@ void GPU_TILE(hc::array_view<double,2> a, hc::array_view<double,2> b, hc::array_
  		  double sum = 0;		  
 		  for(int i = 0; i < b.get_extent()[0]; i += TS)
 		    {
-		      tile_static int locA[TS][TS]; 
-		      tile_static int locB[TS][TS];
+		      tile_static double locA[TS][TS]; 
+		      tile_static double locB[TS][TS];
 		      locA[row][col] = a(rowG, col + i);
 		      locB[row][col] = b(row + i, colG);
 		      // threads in tile all wait until locA,locB are filled.  
 		      t_idx.barrier.wait();
-		      for (int k = 0; k <TS; k++)
+		      for (int k = 0; k < TS; k++)
 			{  
-			  sum += locA[row][k]* locB[k][col];  
+			  sum += locA[row][k] * locB[k][col];  
 			}
 		      // all threads wait until sums are calculated. 
 		      t_idx.barrier.wait();
