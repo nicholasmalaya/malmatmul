@@ -157,6 +157,7 @@ void GPU_MULT(hc::array_view<double,2> a, hc::array_view<double,2> b, hc::array_
 void GPU_TILE(hc::array_view<double,2> a, hc::array_view<double,2> b, hc::array_view<double,2> c)
 {  
   // Tile Size = 8 appears optimal
+  // appears that largest power of 2 that can fit evenly is best
   static const int TS = 8;
 
   // build tile(TSxTS)
@@ -324,6 +325,11 @@ int main(int argc, char *argv[])
   for(int i = 0, ie = C.size(); i != ie; ++i)
     my_composed_vector_c.insert(my_composed_vector_c.end(), C[i].begin(), C[i].end());
   hc::array_view<double, 2> c(N, N, &my_composed_vector_c.front());
+
+  // Provide Accelerator Details -- if not AMD device it is in ERROR
+  vector<hc::accelerator> accs = hc::accelerator::get_all();
+  hc::accelerator chosen_one;
+  std::wcout << chosen_one.get_description() << std::endl;
   
   //
   // EXECUTE
