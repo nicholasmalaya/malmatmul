@@ -154,7 +154,7 @@ void GPU_MULT(hc::array_view<double,2> a, hc::array_view<double,2> b, hc::array_
 //
 // GPU MULTIPLY W/ TILES 
 //
-void GPU_TILE(hc::array_view<double,2> a, hc::array_view<double,2> b, hc::array_view<double,2> c)
+void GPU_TILE(hc::array_view<const double,2> a, hc::array_view<const double,2> b, hc::array_view<double,2> c)
 {  
   // Tile Size = 8 appears optimal
   // appears that largest power of 2 that can fit evenly is best
@@ -312,12 +312,12 @@ int main(int argc, char *argv[])
   vector<double> my_composed_vector;
   for(int i = 0, ie = A.size(); i != ie; ++i)
     my_composed_vector.insert(my_composed_vector.end(), A[i].begin(), A[i].end());
-  hc::array_view<double, 2> a(N, N, &my_composed_vector.front());
+  hc::array_view<const double, 2> a(N, N, &my_composed_vector.front());
 
   vector<double> my_composed_vector_b;
   for(int i = 0, ie = B.size(); i != ie; ++i)
     my_composed_vector_b.insert(my_composed_vector_b.end(), B[i].begin(), B[i].end());
-  hc::array_view<double, 2> b(N, N, &my_composed_vector_b.front());
+  hc::array_view<const double, 2> b(N, N, &my_composed_vector_b.front());
   
   // build C matrix  
   vector<vector<double> > C = build_C(N);
@@ -325,7 +325,7 @@ int main(int argc, char *argv[])
   for(int i = 0, ie = C.size(); i != ie; ++i)
     my_composed_vector_c.insert(my_composed_vector_c.end(), C[i].begin(), C[i].end());
   hc::array_view<double, 2> c(N, N, &my_composed_vector_c.front());
-
+  
   // Provide Accelerator Details -- if not AMD device it is in ERROR
   vector<hc::accelerator> accs = hc::accelerator::get_all();
   hc::accelerator chosen_one;
