@@ -123,7 +123,6 @@ void GPU_SUB(hc::array_view<double,2> a, hc::array_view<double,2> b, hc::array_v
 
 
 //
-// CORE COMPUTE KERNEL
 // GPU MULTIPLY KERNEL
 //
 void GPU_MULT(hc::array_view<double,2> a, hc::array_view<double,2> b, hc::array_view<double,2> c)
@@ -151,6 +150,80 @@ void GPU_MULT(hc::array_view<double,2> a, hc::array_view<double,2> b, hc::array_
 //
 // https://msdn.microsoft.com/en-us/library/hh873133.aspx
 // https://github.com/arbenson/fast-matmul/blob/master/codegen/algorithms/strassen
+
+//
+// GPU MULTIPLY W/ TILES KERNEL
+//
+void GPU_TILE(hc::array_view<double,2> a, hc::array_view<double,2> b, hc::array_view<double,2> c)
+{  
+  // tile size = TS
+  static const int TS = 2;
+  hc::tiled_extent<2> t_ex;
+  
+  // build tile(TSxTS)
+  c.discard_data();
+  hc::parallel_for_each(t_ex, [=](hc::tiled_index<2> t_idx) [[hc]]
+		{
+		  
+		  // local 
+		  int row  = t_idx.local[0];
+		  int col  = t_idx.local[1];
+		  
+		  // global
+		  int rowG = t_idx.global[0];
+		  int colG = t_idx.global[1];
+
+ 		  double sum = 0;		  
+		  for(int i = 0; i < b.get_extent()[0]; i += TS)
+		    {
+		      tile_static int locA[TS][TS]; 
+		      tile_static int locB[TS][TS];
+		      locA[row][col] = a(rowG, col + i);
+		      locB[row][col] = b(row + i, colG);
+		      // threads in tile all wait until locA,locB are filled.  
+		      t_idx.barrier.wait();
+		      for (int k = 0; k <TS; k++)
+			{  
+			  sum += locA[row][k]* locB[k][col];  
+			}
+		      // all threads wait until sums are calculated. 
+		      t_idx.barrier.wait();
+		    }  
+		  c[t_idx.global] = sum;		  
+   		});
+  c.synchronize();
+
+}
+// kernel
+//
+
+//
+// CORE COMPUTE KERNEL
+//
+void GPU_STRASSEN(hc::array_view<double,2> a, hc::array_view<double,2> b, hc::array_view<double,2> c)
+{  
+
+  c.discard_data();
+  hc::parallel_for_each(c.get_extent(), [=](hc::index<2> idx) [[hc]]
+		{
+		  int row = idx[0];
+		  int col = idx[1];
+ 		  double sum = 0;
+		  
+		  for(int i = 0; i < b.get_extent()[0]; i++)
+		    {
+		      sum += a(row, i) * b(i, col);
+		    }
+		  
+		  c[idx] = sum;
+   		});
+  c.synchronize();
+
+}
+// 
+//
+//
+
 
 //
 //	MSEMat - compute the mean squared error between 
@@ -253,7 +326,8 @@ int main(int argc, char *argv[])
   //
   std::cout << "execute\n";
   double start = get_wtime();
-  GPU_MULT(a, b, c);
+  //GPU_MULT(a, b, c);
+  GPU_TILE(a, b, c);
   double end = get_wtime();
   std::cout << "FOM (sec) = " <<  end - start << std::endl;    
   //
