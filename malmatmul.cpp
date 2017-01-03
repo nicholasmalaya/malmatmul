@@ -91,11 +91,42 @@ int WriteMatrixToFile(FILE *fp, hc::array_view<double,2> mat, long N)
   return(0);
 }
 
+//
+// GPU ADD KERNEL
+//
+void GPU_ADD(hc::array_view<double,2> a, hc::array_view<double,2> b, hc::array_view<double,2> c)
+{  
+
+  c.discard_data();
+  hc::parallel_for_each(c.get_extent(), [=](hc::index<2> idx) [[hc]]
+		{		  
+		  c[idx] = a[idx] + b[idx];
+   		});
+  c.synchronize();
+
+}
+
+//
+// GPU SUBTRACT KERNEL
+//
+void GPU_SUB(hc::array_view<double,2> a, hc::array_view<double,2> b, hc::array_view<double,2> c)
+{  
+
+  c.discard_data();
+  hc::parallel_for_each(c.get_extent(), [=](hc::index<2> idx) [[hc]]
+		{		  
+		  c[idx] = a[idx] + b[idx];
+   		});
+  c.synchronize();
+
+}
+
 
 //
 // CORE COMPUTE KERNEL
+// GPU MULTIPLY KERNEL
 //
-void bijk(hc::array_view<double,2> a, hc::array_view<double,2> b, hc::array_view<double,2> c, long n)
+void GPU_MULT(hc::array_view<double,2> a, hc::array_view<double,2> b, hc::array_view<double,2> c)
 {  
 
   c.discard_data();
@@ -106,7 +137,10 @@ void bijk(hc::array_view<double,2> a, hc::array_view<double,2> b, hc::array_view
  		  double sum = 0;
 		  
 		  for(int i = 0; i < b.get_extent()[0]; i++)
-		    sum += a(row, i) * b(i, col);
+		    {
+		      sum += a(row, i) * b(i, col);
+		    }
+		  
 		  c[idx] = sum;
    		});
   c.synchronize();
@@ -219,8 +253,7 @@ int main(int argc, char *argv[])
   //
   std::cout << "execute\n";
   double start = get_wtime();
-  bijk(a, b, c, N);
-  //bijk_cpu(a, b, c, N);
+  GPU_MULT(a, b, c);
   double end = get_wtime();
   std::cout << "FOM (sec) = " <<  end - start << std::endl;    
   //
