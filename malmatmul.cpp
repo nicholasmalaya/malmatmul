@@ -161,7 +161,8 @@ void GPU_TILE(hc::array_view<const double,2> a, hc::array_view<const double,2> b
   static const int TS = 8;
 
   // build tile(TSxTS)
-  hc::extent<2> ex(b.get_extent()[0], b.get_extent()[1]);
+  int N = b.get_extent()[0];
+  hc::extent<2> ex(N,N);
   hc::tiled_extent<2> t_ex = ex.tile(TS,TS);
   
   c.discard_data();
@@ -177,7 +178,7 @@ void GPU_TILE(hc::array_view<const double,2> a, hc::array_view<const double,2> b
 		  int colG = t_idx.global[1];
 
  		  double sum = 0;		  
-		  for(int i = 0; i < b.get_extent()[0]; i += TS)
+		  for(int i = 0; i < N; i += TS)
 		    {
 		      tile_static double locA[TS][TS]; 
 		      tile_static double locB[TS][TS];
@@ -194,9 +195,10 @@ void GPU_TILE(hc::array_view<const double,2> a, hc::array_view<const double,2> b
 		      t_idx.barrier.wait();
 		      
 		    }  
-		  c[t_idx.global] = sum;		  
+		  c[t_idx] = sum;		  
    		});
-  c.synchronize();
+  // c.synchronize();
+  // copying is implicit when array_view is out of scope
 
 }
 // kernel
