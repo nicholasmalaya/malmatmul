@@ -154,14 +154,15 @@ void GPU_MULT(hc::array_view<double,2> a, hc::array_view<double,2> b, hc::array_
 //
 // GPU MULTIPLY W/ TILES 
 //
-void GPU_TILE(hc::array_view<const double,2> a, hc::array_view<const double,2> b, hc::array_view<double,2> c)
+void GPU_TILE(hc::array_view<const double,2> a, hc::array_view<const double,2> b, hc::array_view<double,2> c, long N)
 {  
-  // Tile Size = 8 appears optimal
-  // appears that largest power of 2 that can fit evenly is best
-  static const int TS = 8;
 
-  // build tile(TSxTS)
-  long N = b.get_extent()[0];
+  // Tile Size = 8 appears optimal
+  // appears that largest power of 2 that can fit evenly is best  
+  //const int TS = const_cast<const int&>(tile);
+  static const int TS = 8; // equivalent to warp of 64
+  //int TS = tile;
+
   hc::extent<2> ex(N,N);
   hc::tiled_extent<2> t_ex = ex.tile(TS,TS);
   
@@ -338,8 +339,8 @@ int main(int argc, char *argv[])
   //
   std::cout << "execute\n";
   double start = get_wtime();
-  //GPU_MULT(a, b, c);
-  GPU_TILE(a, b, c);
+  // GPU_MULT(a, b, c);
+  GPU_TILE(a, b, c, N);
   double end = get_wtime();
   std::cout << "FOM (sec) = " <<  end - start << std::endl;    
   //
