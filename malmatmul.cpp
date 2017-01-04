@@ -335,7 +335,7 @@ int main(int argc, char *argv[])
   int TS = 1;
   //static const int TS = 8; // equivalent to warp of 64
   int tiles[4] = {2,4,8,16};   
-  for(int i = 0; i < 4; i++)
+  for(int i = 0; i < 3; i++) // NOT a bug: 8 was best, 16 always degraded performance
     {
       if(N%tiles[i] == 0)
 	{
@@ -365,7 +365,7 @@ int main(int argc, char *argv[])
   double end = get_wtime();
   std::cout << "FOM (sec) = " <<  end - start << std::endl;    
   //
-  //
+  // FINISHED WITH EXECUTION 
   //
   
   if(argc == 5) // if gold matrix present
@@ -388,7 +388,7 @@ int main(int argc, char *argv[])
       fclose(fp_G);         
     }
 
-  // acthung! need to write C matrix!
+  // actung! need to write C matrix!
   WriteMatrixToFile(fp_C, c, N);  
 
   // clean up
