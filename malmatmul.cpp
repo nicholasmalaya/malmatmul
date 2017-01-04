@@ -125,7 +125,7 @@ void GPU_SUB(hc::array_view<double,2> a, hc::array_view<double,2> b, hc::array_v
 //
 // GPU MULTIPLY KERNEL
 //
-void GPU_MULT(hc::array_view<double,2> a, hc::array_view<double,2> b, hc::array_view<double,2> c)
+void GPU_MULT(hc::array_view<const double,2> a, hc::array_view<const double,2> b, hc::array_view<double,2> c)
 {  
 
   c.discard_data();
@@ -348,7 +348,7 @@ int main(int argc, char *argv[])
   //
   std::cout << "Execute\n";
   double start = get_wtime();
-  // GPU_MULT(a, b, c);
+  //GPU_MULT(a, b, c);
 
   if(TS == 16)
     GPU_TILE<16>(a, b, c, N);
