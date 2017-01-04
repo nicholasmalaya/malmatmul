@@ -149,7 +149,6 @@ void GPU_MULT(hc::array_view<double,2> a, hc::array_view<double,2> b, hc::array_
 //
 //
 // https://msdn.microsoft.com/en-us/library/hh873133.aspx
-// https://github.com/arbenson/fast-matmul/blob/master/codegen/algorithms/strassen
 
 //
 // GPU MULTIPLY W/ TILES 
@@ -194,7 +193,7 @@ template <int TS> void GPU_TILE(hc::array_view<const double,2> a, hc::array_view
 		  c[t_idx] = sum;		  
    		});
   // c.synchronize();
-  // copying is implicit when array_view is out of scope
+  // copying is implicit when array_view is out of scope, c++ ftw
 
 }
 // kernel
@@ -223,8 +222,8 @@ void GPU_STRASSEN(hc::array_view<double,2> a, hc::array_view<double,2> b, hc::ar
   c.synchronize();
 
 }
-// 
 //
+// https://github.com/arbenson/fast-matmul/blob/master/codegen/algorithms/strassen
 //
 
 
@@ -327,8 +326,8 @@ int main(int argc, char *argv[])
   // Provide Accelerator Details -- if not AMD device it is in ERROR
   vector<hc::accelerator> accs = hc::accelerator::get_all();
   hc::accelerator chosen_one;
-  std::wcout << chosen_one.get_description() << std::endl;
-
+  std::wcout << chosen_one.get_description() << std::endl;  // you were the chosen one! 
+  
   //
   // find largest power of two I can fit... 
   //
