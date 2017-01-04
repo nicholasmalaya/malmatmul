@@ -154,17 +154,12 @@ void GPU_MULT(hc::array_view<double,2> a, hc::array_view<double,2> b, hc::array_
 //
 // GPU MULTIPLY W/ TILES 
 //
-void GPU_TILE(hc::array_view<const double,2> a, hc::array_view<const double,2> b, hc::array_view<double,2> c, long N)
+template <int TS> void GPU_TILE(hc::array_view<const double,2> a, hc::array_view<const double,2> b, hc::array_view<double,2> c, long N)
 {  
 
-  // Tile Size = 8 appears optimal
-  // appears that largest power of 2 that can fit evenly is best  
-  //const int TS = const_cast<const int&>(tile);
-  static const int TS = 8; // equivalent to warp of 64
-  //int TS = tile;
 
   hc::extent<2> ex(N,N);
-  hc::tiled_extent<2> t_ex = ex.tile(TS,TS);
+  hc::tiled_extent<2> t_ex = ex.tile_with_dynamic(TS,TS,TS);
   
   c.discard_data();
   hc::parallel_for_each(t_ex, [=](hc::tiled_index<2> t_idx) [[hc]]
@@ -333,14 +328,40 @@ int main(int argc, char *argv[])
   vector<hc::accelerator> accs = hc::accelerator::get_all();
   hc::accelerator chosen_one;
   std::wcout << chosen_one.get_description() << std::endl;
+
+  //
+  // find largest power of two I can fit... 
+  //
+  int TS = 1;
+  //static const int TS = 8; // equivalent to warp of 64
+  int tiles[4] = {2,4,8,16};   
+  for(int i = 0; i < 4; i++)
+    {
+      if(N%tiles[i] == 0)
+	{
+	  TS=tiles[i];
+	}
+    }
+  std::cout << "Using Tile Size of: " << TS << std::endl;
   
   //
   // EXECUTE
   //
-  std::cout << "execute\n";
+  std::cout << "Execute\n";
   double start = get_wtime();
   // GPU_MULT(a, b, c);
-  GPU_TILE(a, b, c, N);
+
+  if(TS == 16)
+    GPU_TILE<16>(a, b, c, N);
+  else if(TS == 8)
+    GPU_TILE<8>(a, b, c, N);
+  else if(TS == 4)
+    GPU_TILE<4>(a, b, c, N);
+  else if(TS == 2)
+    GPU_TILE<2>(a, b, c, N);
+  else
+    GPU_TILE<1>(a, b, c, N);
+  
   double end = get_wtime();
   std::cout << "FOM (sec) = " <<  end - start << std::endl;    
   //
