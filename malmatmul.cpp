@@ -135,7 +135,7 @@ void GPU_MULT(hc::array_view<double,2> a, hc::array_view<double,2> b, hc::array_
 		  int col = idx[1];
  		  double sum = 0;
 		  
-		  for(int i = 0; i < b.get_extent()[0]; i++)
+		  for(long i = 0; i < b.get_extent()[0]; i++)
 		    {
 		      sum += a(row, i) * b(i, col);
 		    }
@@ -161,7 +161,7 @@ void GPU_TILE(hc::array_view<const double,2> a, hc::array_view<const double,2> b
   static const int TS = 8;
 
   // build tile(TSxTS)
-  int N = b.get_extent()[0];
+  long N = b.get_extent()[0];
   hc::extent<2> ex(N,N);
   hc::tiled_extent<2> t_ex = ex.tile(TS,TS);
   
@@ -178,7 +178,7 @@ void GPU_TILE(hc::array_view<const double,2> a, hc::array_view<const double,2> b
 		  int colG = t_idx.global[1];
 
  		  double sum = 0;		  
-		  for(int i = 0; i < N; i += TS)
+		  for(long i = 0; i < N; i += TS)
 		    {
 		      tile_static double locA[TS][TS]; 
 		      tile_static double locB[TS][TS];
@@ -187,7 +187,7 @@ void GPU_TILE(hc::array_view<const double,2> a, hc::array_view<const double,2> b
 		      
 		      // threads in tile all wait until locA,locB are filled.  
 		      t_idx.barrier.wait();
-		      for (int k = 0; k < TS; k++)
+		      for (long k = 0; k < TS; k++)
 			{  
 			  sum += locA[row][k] * locB[k][col];  
 			}
