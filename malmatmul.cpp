@@ -222,13 +222,26 @@ template <const int TS> void GPU_STRASSEN(hc::array_view<const double,2> a, hc::
 		  int colG = t_idx.global[1];
 
 
-		  if( (rowG < N/2 ) and (colG < N/2 ) ) // A_11
+		  if( (rowG < N/2 ) and (colG < N/2 ) )              // A_11
 		    {
+		      // C11 = P1 + P4 - P5 + P7
 		      c[t_idx] = a(rowG,colG) + b(rowG,colG);
 		    }  
-		  // else if() // A_12
-		  //   {
-		  //   }
+		  else if( (rowG < N/2 ) and (colG > N/2 - 1 ) )     // A_12
+		    {
+		      // C12 = P3 + P5
+		      c[t_idx] = a(rowG,colG) + b(rowG,colG);
+		    }
+		  else if( (rowG > N/2 - 1 ) and (colG < N/2 ) )     // A_21
+		    {
+		      // C21 = P2 + P4
+		      c[t_idx] = a(rowG,colG) + b(rowG,colG);
+		    }
+		  else if( (rowG > N/2 - 1 ) and (colG > N/2 - 1 ) ) // A_22
+		    {
+		      // C22 = P1 + P3 - P2 + P6
+		      c[t_idx] = a(rowG,colG) + b(rowG,colG);
+		    }
 		  
 		});
   c.synchronize();
