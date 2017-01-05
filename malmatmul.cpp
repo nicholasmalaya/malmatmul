@@ -275,8 +275,8 @@ template <const int TS> void GPU_STRASSEN(hc::array_view<const double,2> a, hc::
 		      tile_static double locA22[TS][TS]; 
 		      tile_static double locB11[TS][TS];
 		      locA21[row][col] = a(rowG + Nh, col + i);
-		      locB11[row][col] = b(row + i, colG);
 		      locA22[row][col] = a(rowG + Nh, col + i + Nh);
+		      locB11[row][col] = b(row + i, colG);
 
 		      // threads in tile all wait until locA,locB are filled.  
 		      t_idx.barrier.wait();
@@ -315,9 +315,37 @@ template <const int TS> void GPU_STRASSEN(hc::array_view<const double,2> a, hc::
 		      
 		    }  
 		  //P3[t_idx] = sum;
+		  //c[t_idx] = sum;		  
+		  
+		  // -----------------------------
+		  // Calculate P4!
+		  // -----------------------------
+		  sum = 0;		  
+		  for(long i = 0; i < Nh; i += TS)
+		    {
+		      tile_static double locA22[TS][TS]; 
+		      tile_static double locB21[TS][TS]; 
+		      tile_static double locB11[TS][TS];
+		      locA22[row][col] = a(rowG + Nh, col + i + Nh);
+		      locB21[row][col] = b(row + i + Nh, colG);
+		      locB11[row][col] = b(row + i, colG);
+		      
+		      // threads in tile all wait until locA,locB are filled.  
+		      t_idx.barrier.wait();
+		      for (long k = 0; k < TS; k++)
+			{
+			  sum += (locA22[row][k])*(locB21[k][col]-locB11[k][col]); 
+			}
+		      // all threads wait until sums are calculated. 
+		      t_idx.barrier.wait();
+		      
+		    }  
+		  //P4[t_idx] = sum;
 		  c[t_idx] = sum;		  
 
 		  
+		  
+
 		  
 		  // //
 		  // // final matrix assembly
