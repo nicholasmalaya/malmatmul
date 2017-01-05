@@ -235,7 +235,9 @@ template <const int TS> void GPU_STRASSEN(hc::array_view<const double,2> a, hc::
 		  int rowG = t_idx.global[0];
 		  int colG = t_idx.global[1];
 
+		  // -----------------------------
 		  // Calculate P1!
+		  // -----------------------------
 		  // can we add tiling here?
 		  // need four tiles!
 		  double sum = 0;		  
@@ -262,6 +264,11 @@ template <const int TS> void GPU_STRASSEN(hc::array_view<const double,2> a, hc::
 		    }  
 		  //P1[t_idx] = sum;
 		  c[t_idx] = sum;		  
+
+		  // -----------------------------
+		  // Calculate P2!
+		  // -----------------------------
+
 		  
 		  // //
 		  // // final matrix assembly
