@@ -94,7 +94,7 @@ int WriteMatrixToFile(FILE *fp, hc::array_view<double,2> mat, long N)
 //
 // GPU ADD KERNEL
 //
-void GPU_ADD(hc::array_view<double,2> a, hc::array_view<double,2> b, hc::array_view<double,2> c)
+void GPU_ADD(hc::array_view<const double,2> a, hc::array_view<const double,2> b, hc::array_view<double,2> c)
 {  
 
   c.discard_data();
@@ -109,7 +109,7 @@ void GPU_ADD(hc::array_view<double,2> a, hc::array_view<double,2> b, hc::array_v
 //
 // GPU SUBTRACT KERNEL
 //
-void GPU_SUB(hc::array_view<double,2> a, hc::array_view<double,2> b, hc::array_view<double,2> c)
+void GPU_SUB(hc::array_view<const double,2> a, hc::array_view<const double,2> b, hc::array_view<double,2> c)
 {  
 
   c.discard_data();
@@ -153,7 +153,7 @@ void GPU_MULT(hc::array_view<const double,2> a, hc::array_view<const double,2> b
 //
 // GPU MULTIPLY W/ TILES 
 //
-template <int TS> void GPU_TILE(hc::array_view<const double,2> a, hc::array_view<const double,2> b, hc::array_view<double,2> c, long N)
+template <const int TS> void GPU_TILE(hc::array_view<const double,2> a, hc::array_view<const double,2> b, hc::array_view<double,2> c, long N)
 {  
 
 
@@ -202,8 +202,9 @@ template <int TS> void GPU_TILE(hc::array_view<const double,2> a, hc::array_view
 //
 // CORE COMPUTE KERNEL
 //
-void GPU_STRASSEN(hc::array_view<double,2> a, hc::array_view<double,2> b, hc::array_view<double,2> c)
-{  
+template <const int TS> void GPU_STRASSEN(hc::array_view<const double,2> a, hc::array_view<const double,2> b, hc::array_view<double,2> c, long N)
+{
+  // if you are here, we KNOW we are divisible by two!
 
   c.discard_data();
   hc::parallel_for_each(c.get_extent(), [=](hc::index<2> idx) [[hc]]
@@ -351,16 +352,24 @@ int main(int argc, char *argv[])
   double start = get_wtime();
   //GPU_MULT(a, b, c);
 
-  if(TS == 16)
-    GPU_TILE<16>(a, b, c, N);
-  else if(TS == 8)
-    GPU_TILE<8>(a, b, c, N);
-  else if(TS == 4)
-    GPU_TILE<4>(a, b, c, N);
-  else if(TS == 2)
-    GPU_TILE<2>(a, b, c, N);
+  if(N%2==0) // can use at least one level of strassen
+    {
+      GPU_STRASSEN<2>(a,b,c,N);
+    }
   else
-    GPU_TILE<1>(a, b, c, N);
+    {
+      if(TS == 16)
+	GPU_TILE<16>(a, b, c, N);
+      else if(TS == 8)
+	GPU_TILE<8>(a, b, c, N);
+      else if(TS == 4)
+	GPU_TILE<4>(a, b, c, N);
+      else if(TS == 2)
+	GPU_TILE<2>(a, b, c, N);
+      else
+	GPU_TILE<1>(a, b, c, N);
+    }
+
   
   double end = get_wtime();
   std::cout << "FOM (sec) = " <<  end - start << std::endl;    
