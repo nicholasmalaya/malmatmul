@@ -341,6 +341,7 @@ int main(int argc, char *argv[])
 	  TS=tiles[i];
 	}
     }
+  assert( (N%TS) == 0); // mild sanity check
   std::cout << "Using Tile Size of: " << TS << std::endl;
   
   //
