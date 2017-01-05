@@ -99,7 +99,7 @@ void GPU_ADD(hc::array_view<const double,2> a, hc::array_view<const double,2> b,
 
   c.discard_data();
   hc::parallel_for_each(c.get_extent(), [=](hc::index<2> idx) [[hc]]
-		{		  
+		{
 		  c[idx] = a[idx] + b[idx];
    		});
   c.synchronize();
@@ -114,7 +114,7 @@ void GPU_SUB(hc::array_view<const double,2> a, hc::array_view<const double,2> b,
 
   c.discard_data();
   hc::parallel_for_each(c.get_extent(), [=](hc::index<2> idx) [[hc]]
-		{		  
+		{
 		  c[idx] = a[idx] - b[idx];
    		});
   c.synchronize();
@@ -155,7 +155,6 @@ void GPU_MULT(hc::array_view<const double,2> a, hc::array_view<const double,2> b
 //
 template <const int TS> void GPU_TILE(hc::array_view<const double,2> a, hc::array_view<const double,2> b, hc::array_view<double,2> c, long N)
 {  
-
 
   hc::extent<2> ex(N,N);
   hc::tiled_extent<2> t_ex = ex.tile_with_dynamic(TS,TS,TS);
@@ -206,20 +205,32 @@ template <const int TS> void GPU_STRASSEN(hc::array_view<const double,2> a, hc::
 {
   // if you are here, we KNOW we are divisible by two!
 
-  c.discard_data();
-  hc::parallel_for_each(c.get_extent(), [=](hc::index<2> idx) [[hc]]
+  
+  hc::extent<2> ex(N,N);
+  hc::tiled_extent<2> t_ex = ex.tile_with_dynamic(TS,TS,TS);
+  
+  //c.discard_data();
+  hc::parallel_for_each(t_ex, [=](hc::tiled_index<2> t_idx) [[hc]]
 		{
-		  int row = idx[0];
-		  int col = idx[1];
- 		  double sum = 0;
 		  
-		  for(int i = 0; i < b.get_extent()[0]; i++)
+		  // local 
+		  int row  = t_idx.local[0];
+		  int col  = t_idx.local[1];
+		  
+		  // global
+		  int rowG = t_idx.global[0];
+		  int colG = t_idx.global[1];
+
+
+		  if( (rowG < N/2 ) and (colG < N/2 ) ) // A_11
 		    {
-		      sum += a(row, i) * b(i, col);
-		    }
+		      c[t_idx] = a(rowG,colG) + b(rowG,colG);
+		    }  
+		  // else if() // A_12
+		  //   {
+		  //   }
 		  
-		  c[idx] = sum;
-   		});
+		});
   c.synchronize();
 
 }
