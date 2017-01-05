@@ -66,7 +66,7 @@ vector<vector<double> > build_C(long N)
     m[i].resize(N);
   
   // // MARK IT ZERO
-  for(int i=0; i< N; i++)
+  for(i=0; i< N; i++)
     for(j=0; j<N; j++)
       m[i][j] = 0.0;
   
