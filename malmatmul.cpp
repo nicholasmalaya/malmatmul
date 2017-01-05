@@ -203,11 +203,25 @@ template <const int TS> void GPU_TILE(hc::array_view<const double,2> a, hc::arra
 //
 template <const int TS> void GPU_STRASSEN(hc::array_view<const double,2> a, hc::array_view<const double,2> b, hc::array_view<double,2> c, long N)
 {
+  //
   // if you are here, we KNOW we are divisible by two!
-
-  
-  hc::extent<2> ex(N,N);
+  //
+  long Nh = N/2;
+  hc::extent<2> ex(Nh,Nh);
   hc::tiled_extent<2> t_ex = ex.tile_with_dynamic(TS,TS,TS);
+
+  // Strassen matrices
+  hc::array<double,2> P1(ex);
+  hc::array<double,2> P2(ex);
+  hc::array<double,2> P3(ex);
+  hc::array<double,2> P4(ex);
+  hc::array<double,2> P5(ex);
+  hc::array<double,2> P6(ex);
+  hc::array<double,2> P7(ex);
+
+  // legit temp matricies
+  hc::array<double,2> T1(ex);
+  hc::array<double,2> T2(ex);
   
   //c.discard_data();
   hc::parallel_for_each(t_ex, [=](hc::tiled_index<2> t_idx) [[hc]]
@@ -221,27 +235,56 @@ template <const int TS> void GPU_STRASSEN(hc::array_view<const double,2> a, hc::
 		  int rowG = t_idx.global[0];
 		  int colG = t_idx.global[1];
 
+		  // Calculate P1!
+		  // can we add tiling here?
+		  // need four tiles!
+		  double sum = 0;		  
+		  for(long i = 0; i < Nh; i += TS)
+		    {
+		      tile_static double locA11[TS][TS]; 
+		      tile_static double locA22[TS][TS]; 
+		      tile_static double locB11[TS][TS];
+		      tile_static double locB22[TS][TS];
+		      locA11[row][col] = a(rowG, col + i);
+		      locB11[row][col] = b(row + i, colG);
+		      locA22[row][col] = a(rowG + Nh, col + i + Nh);
+		      locB22[row][col] = b(row + i + Nh, colG + Nh);
 
-		  if( (rowG < N/2 ) and (colG < N/2 ) )              // A_11
-		    {
-		      // C11 = P1 + P4 - P5 + P7
-		      c[t_idx] = a(rowG,colG) + b(rowG,colG);
+		      // threads in tile all wait until locA,locB are filled.  
+		      t_idx.barrier.wait();
+		      for (long k = 0; k < TS; k++)
+			{
+			  sum += (locA11[row][k]+locA22[row][k])*(locB11[k][col]+locB22[k][col]); 
+			}
+		      // all threads wait until sums are calculated. 
+		      t_idx.barrier.wait();
+		      
 		    }  
-		  else if( (rowG < N/2 ) and (colG > N/2 - 1 ) )     // A_12
-		    {
-		      // C12 = P3 + P5
-		      c[t_idx] = a(rowG,colG) + b(rowG,colG);
-		    }
-		  else if( (rowG > N/2 - 1 ) and (colG < N/2 ) )     // A_21
-		    {
-		      // C21 = P2 + P4
-		      c[t_idx] = a(rowG,colG) + b(rowG,colG);
-		    }
-		  else if( (rowG > N/2 - 1 ) and (colG > N/2 - 1 ) ) // A_22
-		    {
-		      // C22 = P1 + P3 - P2 + P6
-		      c[t_idx] = a(rowG,colG) + b(rowG,colG);
-		    }
+		  //P1[t_idx] = sum;
+		  c[t_idx] = sum;		  
+		  
+		  // //
+		  // // final matrix assembly
+		  // if( (rowG < N/2 ) and (colG < N/2 ) )              // C_11
+		  //   {
+		  //     // C11 = P1 + P4 - P5 + P7
+		  //     c[t_idx] = a(rowG,colG) + b(rowG,colG);
+		  //   }  
+		  // else if( (rowG < N/2 ) and (colG > N/2 - 1 ) )     // C_12
+		  //   {
+		  //     // C12 = P3 + P5
+		  //     c[t_idx] = a(rowG,colG) + b(rowG,colG);
+		  //   }
+		  // else if( (rowG > N/2 - 1 ) and (colG < N/2 ) )     // C_21
+		  //   {
+		  //     // C21 = P2 + P4
+		  //     c[t_idx] = a(rowG,colG) + b(rowG,colG);
+		  //   }
+		  // else if( (rowG > N/2 - 1 ) and (colG > N/2 - 1 ) ) // C_22
+		  //   {
+		  //     // C22 = P1 + P3 - P2 + P6
+		  //     c[t_idx] = a(rowG,colG) + b(rowG,colG);
+		  //   }
 		  
 		});
   c.synchronize();
