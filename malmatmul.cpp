@@ -356,7 +356,7 @@ int main(int argc, char *argv[])
   vector<hc::accelerator> accs = hc::accelerator::get_all();
   hc::accelerator chosen_one;
   std::wcout << chosen_one.get_description() << std::endl;  // you were the chosen one! 
-  
+
   //
   // find largest power of two I can fit... 
   //
@@ -384,8 +384,8 @@ int main(int argc, char *argv[])
     {
       // 6 optimal in 3k
       // 8 optimal in 4096
-      //GPU_STRASSEN<2>(a,b,c,N);
-      GPU_TILE<2>(a, b, c, N);
+      GPU_STRASSEN<4>(a,b,c,N);
+      //GPU_TILE<2>(a, b, c, N);
     }
   else
     {
