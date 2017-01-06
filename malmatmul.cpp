@@ -384,8 +384,8 @@ int main(int argc, char *argv[])
     {
       // 6 optimal in 3k
       // 8 optimal in 4096
-      GPU_STRASSEN<4>(a,b,c,N);
-      //GPU_TILE<2>(a, b, c, N);
+      //GPU_STRASSEN<16>(a,b,c,N);
+      GPU_TILE<16>(a, b, c, N);
     }
   else
     {
@@ -400,6 +400,8 @@ int main(int argc, char *argv[])
       else
   	GPU_TILE<1>(a, b, c, N);
     }
+
+  std:: cout << c[0][0] << std::endl;
   
   double end = get_wtime();
   std::cout << "FOM (sec) = " <<  end - start << std::endl;    
