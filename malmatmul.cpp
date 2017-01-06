@@ -199,7 +199,8 @@ template <const int TS> void GPU_TILE(hc::array_view<const double,2> a, hc::arra
 //
 
 //
-// CORE COMPUTE KERNEL
+// CORE COMPUTE KERNEL for Strassen
+// We are hand-coding only one level of depth
 //
 template <const int TS> void GPU_STRASSEN(hc::array_view<const double,2> a, hc::array_view<const double,2> b, hc::array_view<double,2> c, long N)
 {
@@ -210,18 +211,14 @@ template <const int TS> void GPU_STRASSEN(hc::array_view<const double,2> a, hc::
   hc::extent<2> ex(Nh,Nh);
   hc::tiled_extent<2> t_ex = ex.tile_with_dynamic(TS,TS,TS);
 
-  // Strassen matrices
-  hc::array<double,2> P1(ex);
-  hc::array<double,2> P2(ex);
-  hc::array<double,2> P3(ex);
-  hc::array<double,2> P4(ex);
-  hc::array<double,2> P5(ex);
-  hc::array<double,2> P6(ex);
-  hc::array<double,2> P7(ex);
-
-  // legit temp matricies
-  hc::array<double,2> T1(ex);
-  hc::array<double,2> T2(ex);
+  // Strassen Temporary Matrices
+  hc::array_view<double,2> P1(ex);
+  hc::array_view<double,2> P2(ex);
+  hc::array_view<double,2> P3(ex);
+  hc::array_view<double,2> P4(ex);
+  hc::array_view<double,2> P5(ex);
+  hc::array_view<double,2> P6(ex);
+  hc::array_view<double,2> P7(ex);
   
   //c.discard_data();
   hc::parallel_for_each(t_ex, [=](hc::tiled_index<2> t_idx) [[hc]]
@@ -262,13 +259,12 @@ template <const int TS> void GPU_STRASSEN(hc::array_view<const double,2> a, hc::
 		      t_idx.barrier.wait();
 		      
 		    }  
-		  //P1[t_idx] = sum1;
-		  //c[t_idx] = sum1;		  
+		  P1[t_idx] = sum1;
 
 		  // -----------------------------
 		  // Calculate P2!
 		  // -----------------------------
-		  sum2 = 0;		  
+		  double sum2 = 0;		  
 		  for(long i = 0; i < Nh; i += TS)
 		    {
 		      tile_static double locA21[TS][TS]; 
@@ -288,13 +284,12 @@ template <const int TS> void GPU_STRASSEN(hc::array_view<const double,2> a, hc::
 		      t_idx.barrier.wait();
 		      
 		    }  
-		  //P2[t_idx] = sum2;
-		  //c[t_idx] = sum2;		  
+		  P2[t_idx] = sum2;
 
 		  // -----------------------------
 		  // Calculate P3!
 		  // -----------------------------
-		  sum3 = 0;		  
+		  double sum3 = 0;		  
 		  for(long i = 0; i < Nh; i += TS)
 		    {
 		      tile_static double locA11[TS][TS]; 
@@ -314,13 +309,12 @@ template <const int TS> void GPU_STRASSEN(hc::array_view<const double,2> a, hc::
 		      t_idx.barrier.wait();
 		      
 		    }  
-		  //P3[t_idx] = sum3;
-		  //c[t_idx] = sum3;		  
+		  P3[t_idx] = sum3;
 		  
 		  // -----------------------------
 		  // Calculate P4!
 		  // -----------------------------
-		  sum4 = 0;		  
+		  double sum4 = 0;		  
 		  for(long i = 0; i < Nh; i += TS)
 		    {
 		      tile_static double locA22[TS][TS]; 
@@ -340,13 +334,12 @@ template <const int TS> void GPU_STRASSEN(hc::array_view<const double,2> a, hc::
 		      t_idx.barrier.wait();
 		      
 		    }  
-		  //P4[t_idx] = sum4;
-		  //c[t_idx] = sum4;		  
+		  P4[t_idx] = sum4;
 
 		  // -----------------------------
 		  // Calculate P5!
 		  // -----------------------------
-		  sum5 = 0;		  
+		  double sum5 = 0;		  
 		  for(long i = 0; i < Nh; i += TS)
 		    {
 		      tile_static double locA11[TS][TS]; 
@@ -366,13 +359,12 @@ template <const int TS> void GPU_STRASSEN(hc::array_view<const double,2> a, hc::
 		      t_idx.barrier.wait();
 		      
 		    }  
-		  //P5[t_idx] = sum5;
-		  //c[t_idx] = sum5;
+		  P5[t_idx] = sum5;
 
 		  // -----------------------------
 		  // Calculate P6!
 		  // -----------------------------
-		  sum6 = 0;		  
+		  double sum6 = 0;		  
 		  for(long i = 0; i < Nh; i += TS)
 		    {
 		      tile_static double locA21[TS][TS]; 
@@ -394,13 +386,12 @@ template <const int TS> void GPU_STRASSEN(hc::array_view<const double,2> a, hc::
 		      t_idx.barrier.wait();
 		      
 		    }  
-		  //P1[t_idx] = sum6;
-		  //c[t_idx] = sum6;		  
+		  P6[t_idx] = sum6;
 		  
 		  // -----------------------------
 		  // Calculate P7!
 		  // -----------------------------
-		  sum7 = 0;		  
+		  double sum7 = 0;		  
 		  for(long i = 0; i < Nh; i += TS)
 		    {
 		      tile_static double locA12[TS][TS]; 
@@ -422,14 +413,54 @@ template <const int TS> void GPU_STRASSEN(hc::array_view<const double,2> a, hc::
 		      t_idx.barrier.wait();
 		      
 		    }  
-		  //P1[t_idx] = sum7;
-		  c[t_idx] = sum7;		  
-
+		  P7[t_idx] = sum7;
 		  
 
+		  // I think I need a synchronization here
+		  P1.synchronize();
+		  P2.synchronize();
+		  P3.synchronize();
+		  P4.synchronize();
+		  P5.synchronize();
+		  P6.synchronize();
+		  P7.synchronize();
 		  
-		  // //
-		  // // final matrix assembly
+		  // -----------------------------
+		  // Final Matrix Assembly
+		  // -----------------------------
+		  // 
+		  // try tiling?
+		  //
+		  // double sum7 = 0;		  
+		  // for(long i = 0; i < Nh; i += TS)
+		  //   {
+		  //     tile_static double locP1[TS][TS]; 
+		  //     tile_static double locP2[TS][TS]; 
+		  //     tile_static double locP3[TS][TS];
+		  //     tile_static double locP4[TS][TS];
+		  //     tile_static double locP5[TS][TS];
+		  //     tile_static double locP6[TS][TS];
+		  //     tile_static double locP7[TS][TS];
+		  //     locA12[row][col] = a(rowG, col + i + Nh);
+		  //     locA22[row][col] = a(rowG + Nh, col + i + Nh);
+		  //     locB21[row][col] = b(row + i + Nh, colG);
+		  //     locB22[row][col] = b(row + i + Nh, colG + Nh);
+
+
+		  // stupid loop
+		  // C_11
+		  c[t_idx] = P1[t_idx]+P4[t_idx]-P5[t_idx]+P7[t_idx];
+
+		  // C_12
+		  c[t_idx.global[0]][t_idx.global[1]+Nh] = P3[t_idx]+P5[t_idx];
+
+		  // C_21
+		  c[t_idx.global[0]+Nh][t_idx.global[1]] = P2[t_idx]+P4[t_idx];
+		  
+		  // C_22
+		  c[t_idx.global[0]+Nh][t_idx.global[1]+Nh] = P1[t_idx]+P3[t_idx]-P2[t_idx]+P6[t_idx];
+		  
+
 		  // if( (rowG < N/2 ) and (colG < N/2 ) )              // C_11
 		  //   {
 		  //     // C11 = P1 + P4 - P5 + P7
