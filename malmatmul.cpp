@@ -397,6 +397,33 @@ template <const int TS> void GPU_STRASSEN(hc::array_view<const double,2> a, hc::
 		  //P1[t_idx] = sum;
 		  //c[t_idx] = sum;		  
 		  
+		  // -----------------------------
+		  // Calculate P7!
+		  // -----------------------------
+		  sum = 0;		  
+		  for(long i = 0; i < Nh; i += TS)
+		    {
+		      tile_static double locA12[TS][TS]; 
+		      tile_static double locA22[TS][TS]; 
+		      tile_static double locB21[TS][TS];
+		      tile_static double locB22[TS][TS];
+		      locA12[row][col] = a(rowG, col + i + Nh);
+		      locA22[row][col] = a(rowG + Nh, col + i + Nh);
+		      locB21[row][col] = b(row + i + Nh, colG);
+		      locB22[row][col] = b(row + i + Nh, colG + Nh);
+		      
+		      // threads in tile all wait until locA,locB are filled.  
+		      t_idx.barrier.wait();
+		      for (long k = 0; k < TS; k++)
+			{
+			  sum += (locA12[row][k]-locA22[row][k])*(locB21[k][col]+locB22[k][col]); 
+			}
+		      // all threads wait until sums are calculated. 
+		      t_idx.barrier.wait();
+		      
+		    }  
+		  //P1[t_idx] = sum;
+		  c[t_idx] = sum;		  
 
 		  
 
