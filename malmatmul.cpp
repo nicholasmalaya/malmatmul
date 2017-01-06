@@ -179,15 +179,6 @@ template <const int TS> void GPU_STRASSEN(hc::array_view<const double,2> a, hc::
   long Nh = N/2;
   hc::extent<2> ex(Nh,Nh);
   hc::tiled_extent<2> t_ex = ex.tile_with_dynamic(TS,TS,TS);
-
-  // Strassen Temporary Matrices
-  hc::array_view<double,2> P1(ex);
-  hc::array_view<double,2> P2(ex);
-  hc::array_view<double,2> P3(ex);
-  hc::array_view<double,2> P4(ex);
-  hc::array_view<double,2> P5(ex);
-  hc::array_view<double,2> P6(ex);
-  hc::array_view<double,2> P7(ex);
   
   //c.discard_data();
   hc::parallel_for_each(t_ex, [=](hc::tiled_index<2> t_idx) [[hc]]
@@ -250,53 +241,22 @@ template <const int TS> void GPU_STRASSEN(hc::array_view<const double,2> a, hc::
 		      t_idx.barrier.wait();
 		      
 		    }  
-		  P1[t_idx] = sum1;
-		  P2[t_idx] = sum2;
-		  P3[t_idx] = sum3;
-		  P4[t_idx] = sum4;
-		  P5[t_idx] = sum5;
-		  P6[t_idx] = sum6;
-		  P7[t_idx] = sum7;
-
-		  // -----------------------------
-		  // Final Matrix Assembly
-		  // -----------------------------
-		  // 
-		  // probably faster to tile in rows... 
-		  //	  
-		  for(long i = 0; i < Nh; i += TS)
-		    {
-		      tile_static double locP1[TS][TS]; 
-		      tile_static double locP2[TS][TS]; 
-		      tile_static double locP3[TS][TS];
-		      tile_static double locP4[TS][TS];
-		      tile_static double locP5[TS][TS];
-		      tile_static double locP6[TS][TS];
-		      tile_static double locP7[TS][TS];
-		      locP1[row][col] = P1[t_idx];
-		      locP2[row][col] = P2[t_idx];
-		      locP3[row][col] = P3[t_idx];
-		      locP4[row][col] = P4[t_idx];
-		      locP5[row][col] = P5[t_idx];
-		      locP6[row][col] = P6[t_idx];
-		      locP7[row][col] = P7[t_idx];
 		      
-		      // C_11
-		      c[t_idx] = locP1[row][col]+locP4[row][col]-locP5[row][col]+locP7[row][col];
-		      
-		      // C_12
-		      c[t_idx.global[0]][t_idx.global[1]+Nh] = locP3[row][col]+locP5[row][col];
-		      
-		      // C_21
-		      c[t_idx.global[0]+Nh][t_idx.global[1]] = locP2[row][col]+locP4[row][col];
-		      
-		      // C_22
-		      c[t_idx.global[0]+Nh][t_idx.global[1]+Nh] = locP1[row][col]+locP3[row][col]-locP2[row][col]+locP6[row][col];
-		    }
-
+		  // C_11
+		  c[t_idx] = sum1 + sum4 - sum5 + sum7;
+		  
+		  // C_12
+		  c[t_idx.global[0]][t_idx.global[1]+Nh] = sum3 + sum5;
+		  
+		  // C_21
+		  c[t_idx.global[0]+Nh][t_idx.global[1]] = sum2 + sum4;
+		  
+		  // C_22
+		  c[t_idx.global[0]+Nh][t_idx.global[1]+Nh] = sum1 + sum3 - sum2 + sum6;
+		
 		  
 		});
-  c.synchronize();
+  //c.synchronize();
 
 }
 //
