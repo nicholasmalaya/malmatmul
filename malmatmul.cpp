@@ -392,7 +392,8 @@ int main(int argc, char *argv[])
   if(N%2==0) // can use at least one level of strassen
     {
       // 6 optimal in 3k
-      GPU_STRASSEN<6>(a,b,c,N);
+      // 8 optimal in 4096
+      GPU_STRASSEN<2>(a,b,c,N);
     }
   else
     {
