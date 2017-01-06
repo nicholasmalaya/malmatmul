@@ -240,7 +240,7 @@ template <const int TS> void GPU_STRASSEN(hc::array_view<const double,2> a, hc::
 		  // -----------------------------
 		  // can we add tiling here?
 		  // need four tiles!
-		  double sum = 0;		  
+		  double sum1 = 0;		  
 		  for(long i = 0; i < Nh; i += TS)
 		    {
 		      tile_static double locA11[TS][TS]; 
@@ -256,19 +256,19 @@ template <const int TS> void GPU_STRASSEN(hc::array_view<const double,2> a, hc::
 		      t_idx.barrier.wait();
 		      for (long k = 0; k < TS; k++)
 			{
-			  sum += (locA11[row][k]+locA22[row][k])*(locB11[k][col]+locB22[k][col]); 
+			  sum1 += (locA11[row][k]+locA22[row][k])*(locB11[k][col]+locB22[k][col]); 
 			}
 		      // all threads wait until sums are calculated. 
 		      t_idx.barrier.wait();
 		      
 		    }  
-		  //P1[t_idx] = sum;
-		  //c[t_idx] = sum;		  
+		  //P1[t_idx] = sum1;
+		  //c[t_idx] = sum1;		  
 
 		  // -----------------------------
 		  // Calculate P2!
 		  // -----------------------------
-		  sum = 0;		  
+		  sum2 = 0;		  
 		  for(long i = 0; i < Nh; i += TS)
 		    {
 		      tile_static double locA21[TS][TS]; 
@@ -282,19 +282,19 @@ template <const int TS> void GPU_STRASSEN(hc::array_view<const double,2> a, hc::
 		      t_idx.barrier.wait();
 		      for (long k = 0; k < TS; k++)
 			{
-			  sum += (locA21[row][k]+locA22[row][k])*(locB11[k][col]); 
+			  sum2 += (locA21[row][k]+locA22[row][k])*(locB11[k][col]); 
 			}
 		      // all threads wait until sums are calculated. 
 		      t_idx.barrier.wait();
 		      
 		    }  
-		  //P2[t_idx] = sum;
-		  //c[t_idx] = sum;		  
+		  //P2[t_idx] = sum2;
+		  //c[t_idx] = sum2;		  
 
 		  // -----------------------------
 		  // Calculate P3!
 		  // -----------------------------
-		  sum = 0;		  
+		  sum3 = 0;		  
 		  for(long i = 0; i < Nh; i += TS)
 		    {
 		      tile_static double locA11[TS][TS]; 
@@ -308,19 +308,19 @@ template <const int TS> void GPU_STRASSEN(hc::array_view<const double,2> a, hc::
 		      t_idx.barrier.wait();
 		      for (long k = 0; k < TS; k++)
 			{
-			  sum += (locA11[row][k])*(locB12[k][col]-locB22[k][col]); 
+			  sum3 += (locA11[row][k])*(locB12[k][col]-locB22[k][col]); 
 			}
 		      // all threads wait until sums are calculated. 
 		      t_idx.barrier.wait();
 		      
 		    }  
-		  //P3[t_idx] = sum;
-		  //c[t_idx] = sum;		  
+		  //P3[t_idx] = sum3;
+		  //c[t_idx] = sum3;		  
 		  
 		  // -----------------------------
 		  // Calculate P4!
 		  // -----------------------------
-		  sum = 0;		  
+		  sum4 = 0;		  
 		  for(long i = 0; i < Nh; i += TS)
 		    {
 		      tile_static double locA22[TS][TS]; 
@@ -334,19 +334,19 @@ template <const int TS> void GPU_STRASSEN(hc::array_view<const double,2> a, hc::
 		      t_idx.barrier.wait();
 		      for (long k = 0; k < TS; k++)
 			{
-			  sum += (locA22[row][k])*(locB21[k][col]-locB11[k][col]); 
+			  sum4 += (locA22[row][k])*(locB21[k][col]-locB11[k][col]); 
 			}
 		      // all threads wait until sums are calculated. 
 		      t_idx.barrier.wait();
 		      
 		    }  
-		  //P4[t_idx] = sum;
-		  //c[t_idx] = sum;		  
+		  //P4[t_idx] = sum4;
+		  //c[t_idx] = sum4;		  
 
 		  // -----------------------------
 		  // Calculate P5!
 		  // -----------------------------
-		  sum = 0;		  
+		  sum5 = 0;		  
 		  for(long i = 0; i < Nh; i += TS)
 		    {
 		      tile_static double locA11[TS][TS]; 
@@ -360,19 +360,19 @@ template <const int TS> void GPU_STRASSEN(hc::array_view<const double,2> a, hc::
 		      t_idx.barrier.wait();
 		      for (long k = 0; k < TS; k++)
 			{
-			  sum += (locA11[row][k]+locA12[row][k])*(locB22[k][col]); 
+			  sum5 += (locA11[row][k]+locA12[row][k])*(locB22[k][col]); 
 			}
 		      // all threads wait until sums are calculated. 
 		      t_idx.barrier.wait();
 		      
 		    }  
-		  //P5[t_idx] = sum;
-		  //c[t_idx] = sum;
+		  //P5[t_idx] = sum5;
+		  //c[t_idx] = sum5;
 
 		  // -----------------------------
 		  // Calculate P6!
 		  // -----------------------------
-		  sum = 0;		  
+		  sum6 = 0;		  
 		  for(long i = 0; i < Nh; i += TS)
 		    {
 		      tile_static double locA21[TS][TS]; 
@@ -388,19 +388,19 @@ template <const int TS> void GPU_STRASSEN(hc::array_view<const double,2> a, hc::
 		      t_idx.barrier.wait();
 		      for (long k = 0; k < TS; k++)
 			{
-			  sum += (locA21[row][k]-locA11[row][k])*(locB11[k][col]+locB12[k][col]); 
+			  sum6 += (locA21[row][k]-locA11[row][k])*(locB11[k][col]+locB12[k][col]); 
 			}
 		      // all threads wait until sums are calculated. 
 		      t_idx.barrier.wait();
 		      
 		    }  
-		  //P1[t_idx] = sum;
-		  //c[t_idx] = sum;		  
+		  //P1[t_idx] = sum6;
+		  //c[t_idx] = sum6;		  
 		  
 		  // -----------------------------
 		  // Calculate P7!
 		  // -----------------------------
-		  sum = 0;		  
+		  sum7 = 0;		  
 		  for(long i = 0; i < Nh; i += TS)
 		    {
 		      tile_static double locA12[TS][TS]; 
@@ -416,14 +416,14 @@ template <const int TS> void GPU_STRASSEN(hc::array_view<const double,2> a, hc::
 		      t_idx.barrier.wait();
 		      for (long k = 0; k < TS; k++)
 			{
-			  sum += (locA12[row][k]-locA22[row][k])*(locB21[k][col]+locB22[k][col]); 
+			  sum7 += (locA12[row][k]-locA22[row][k])*(locB21[k][col]+locB22[k][col]); 
 			}
 		      // all threads wait until sums are calculated. 
 		      t_idx.barrier.wait();
 		      
 		    }  
-		  //P1[t_idx] = sum;
-		  c[t_idx] = sum;		  
+		  //P1[t_idx] = sum7;
+		  c[t_idx] = sum7;		  
 
 		  
 
