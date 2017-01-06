@@ -180,7 +180,7 @@ template <const int TS> void GPU_STRASSEN(hc::array_view<const double,2> a, hc::
   hc::extent<2> ex(Nh,Nh);
   hc::tiled_extent<2> t_ex = ex.tile_with_dynamic(TS,TS,TS);
   
-  //c.discard_data();
+  c.discard_data();
   hc::parallel_for_each(t_ex, [=](hc::tiled_index<2> t_idx) [[hc]]
 		{
 		  
@@ -193,7 +193,7 @@ template <const int TS> void GPU_STRASSEN(hc::array_view<const double,2> a, hc::
 		  int colG = t_idx.global[1];
 
 		  // -----------------------------
-		  // Calculate P1!
+		  // Calculate Ps!
 		  // -----------------------------
 
 		  double sum1 = 0;		  
@@ -238,26 +238,18 @@ template <const int TS> void GPU_STRASSEN(hc::array_view<const double,2> a, hc::
 			  sum7 += (locA12[row][k]-locA22[row][k])*(locB21[k][col]+locB22[k][col]); 
 			}
 		      // all threads wait until sums are calculated. 
-		      t_idx.barrier.wait();
-		      
+		      t_idx.barrier.wait();		      
 		    }  
-		      
-		  // C_11
-		  c[t_idx] = sum1 + sum4 - sum5 + sum7;
-		  
-		  // C_12
-		  c[t_idx.global[0]][t_idx.global[1]+Nh] = sum3 + sum5;
-		  
-		  // C_21
-		  c[t_idx.global[0]+Nh][t_idx.global[1]] = sum2 + sum4;
-		  
-		  // C_22
-		  c[t_idx.global[0]+Nh][t_idx.global[1]+Nh] = sum1 + sum3 - sum2 + sum6;
-		
+
+		  // Final Matrix Assembly
+		  c[t_idx] = sum1 + sum4 - sum5 + sum7;                                  // C_11
+		  c[t_idx.global[0]][t_idx.global[1]+Nh] = sum3 + sum5;                  // C_12
+		  c[t_idx.global[0]+Nh][t_idx.global[1]] = sum2 + sum4;                  // C_21
+		  c[t_idx.global[0]+Nh][t_idx.global[1]+Nh] = sum1 + sum3 - sum2 + sum6; // C_22
 		  
 		});
-  //c.synchronize();
-
+  // c.synchronize();
+  // copying is implicit when array_view is out of scope, c++ ftw
 }
 //
 // END KERNEL
@@ -387,13 +379,13 @@ int main(int argc, char *argv[])
   std::cout << "Execute\n";
   double start = get_wtime();
   //GPU_MULT(a, b, c);
-
   
   if(N%2==0) // can use at least one level of strassen
     {
       // 6 optimal in 3k
       // 8 optimal in 4096
-      GPU_STRASSEN<2>(a,b,c,N);
+      //GPU_STRASSEN<2>(a,b,c,N);
+      GPU_TILE<2>(a, b, c, N);
     }
   else
     {
