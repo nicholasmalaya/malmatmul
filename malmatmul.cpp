@@ -368,7 +368,7 @@ int main(int argc, char *argv[])
   int TS = 1;
   //static const int TS = 8; // equivalent to warp of 64
   int tiles[4] = {2,4,8,16};   
-  for(int i = 0; i < 3; i++) // NOT a bug: 8 was best, 16 always degraded performance
+  for(int i = 0; i < 4; i++) 
     {
       if(N%tiles[i] == 0)
 	{
@@ -385,26 +385,38 @@ int main(int argc, char *argv[])
   double start = get_wtime();
   //GPU_MULT(a, b, c);
   
-  if(N%2==0) // can use at least one level of strassen
-    {
-      // 6 optimal in 3k
-      // 8 optimal in 4096
-      //GPU_STRASSEN<16>(a,b,c,N);
-      GPU_TILE<8>(a, b, c, N);
-    }
+  // if(N%2==0) // can use at least one level of strassen
+  //   {
+  //     // 6 optimal in 3k
+  //     // 8 optimal in 4096
+  //     //GPU_STRASSEN<16>(a,b,c,N);
+  //     GPU_TILE<8>(a, b, c, N);
+  //   }
+  // else
+  //   {
+  //     if(TS == 16)
+  // 	GPU_TILE<16>(a, b, c, N);
+  //     else if(TS == 8)
+  // 	GPU_TILE<8>(a, b, c, N);
+  //     else if(TS == 4)
+  // 	GPU_TILE<4>(a, b, c, N);
+  //     else if(TS == 2)
+  // 	GPU_TILE<2>(a, b, c, N);
+  //     else
+  // 	GPU_TILE<1>(a, b, c, N);
+  //   }
+
+  if(TS == 16)
+    GPU_TILE<16>(a, b, c, N);
+  else if(TS == 8)
+    GPU_TILE<8>(a, b, c, N);
+  else if(TS == 4)
+    GPU_TILE<4>(a, b, c, N);
+  else if(TS == 2)
+    GPU_TILE<2>(a, b, c, N);
   else
-    {
-      if(TS == 16)
-  	GPU_TILE<16>(a, b, c, N);
-      else if(TS == 8)
-  	GPU_TILE<8>(a, b, c, N);
-      else if(TS == 4)
-  	GPU_TILE<4>(a, b, c, N);
-      else if(TS == 2)
-  	GPU_TILE<2>(a, b, c, N);
-      else
-  	GPU_TILE<1>(a, b, c, N);
-    }
+    GPU_TILE<1>(a, b, c, N);
+  
   c.synchronize();
   
   double end = get_wtime();
