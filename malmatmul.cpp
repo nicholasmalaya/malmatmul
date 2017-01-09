@@ -308,9 +308,14 @@ int main(int argc, char *argv[])
   FILE *fp_B;
   FILE *fp_C;
   FILE *fp_G;
+
   char *filename_A = argv[1];
   char *filename_B = argv[2];
   char *filename_C = argv[3];
+
+  // char *filename_A = "../data/A.mat";
+  // char *filename_B = "../data/B.mat";
+  // char *filename_C = "../data/C.mat";
   
   fp_A = fopen(filename_A, "r");
   fp_B = fopen(filename_B, "r");
@@ -385,7 +390,7 @@ int main(int argc, char *argv[])
       // 6 optimal in 3k
       // 8 optimal in 4096
       //GPU_STRASSEN<16>(a,b,c,N);
-      GPU_TILE<16>(a, b, c, N);
+      GPU_TILE<8>(a, b, c, N);
     }
   else
     {
@@ -400,8 +405,7 @@ int main(int argc, char *argv[])
       else
   	GPU_TILE<1>(a, b, c, N);
     }
-
-  std:: cout << c[0][0] << std::endl;
+  c.synchronize();
   
   double end = get_wtime();
   std::cout << "FOM (sec) = " <<  end - start << std::endl;    
