@@ -1,4 +1,9 @@
-This directory contains matrix handling routines used by the contest utilities. 
-These can be used as examples and as "documentation" for the matrix format. 
+Nicholas Malaya's submission for DGEMM contest.
 
+BUILDING:
 
+'make'
+
+RUNNING:
+
+'./malmatmul ../data/A.mat ../data/B.mat ../data/C.mat'
